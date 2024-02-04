@@ -1,0 +1,11 @@
+version: "3.1"
+name: ugc-alerts
+
+services:
+  ugc-alerts-cron:
+    container_name: ugc-alerts-cron
+    image: registry.diikstra.fr/ugc-alerts-cron
+    build: 
+      context: .
+      dockerfile: ./Dockerfile
+    restart: unless-stopped

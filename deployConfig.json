@@ -1,0 +1,28 @@
+{
+    "_meta": {
+        "deployService": "ApolloLaunch",
+        "deployServiceVersion": "1.0.0"
+    },
+    "config": {
+        "repository": {
+            "owner": "Mathis Verstrepen",
+            "name": "ugc-alerts"
+        },
+
+        "docker": {
+            "imageName": "ugc-alerts-cron",
+            "imageTag": "latest",
+            "dockerfileLocation": "Dockerfile",
+            "buildArgs": [],
+            "composeFile": "docker-compose.yml",
+            "envFile": "ugc-alerts.env",
+            "envDeployType": "file"
+        },
+
+        "deploy": {
+            "strategy": "all-at-once"
+        },
+
+        "environment": "prod"
+    }
+}
