@@ -70,7 +70,7 @@ class UGCDB:
             JOIN theaters t ON s.theater_id = t.id;
             """
         )
-        screenings = self.cur.fetchall()[:10]
+        screenings = self.cur.fetchall()
         grouped_screenings = {}
         for movie, theater, img_url, movie_id in screenings:
             if movie not in grouped_screenings:
