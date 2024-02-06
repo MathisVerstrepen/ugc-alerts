@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS theaters (
 CREATE TABLE IF NOT EXISTS movies (
     id INTEGER PRIMARY KEY,
     name TEXT,
-    img_url TEXT
+    img_url TEXT,
+    latest_screening TEXT
 );
 
 CREATE TABLE IF NOT EXISTS screenings (

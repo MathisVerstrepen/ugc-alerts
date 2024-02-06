@@ -3,7 +3,7 @@ import os
 import pathlib
 from dotenv import load_dotenv
 
-from src.ugc import get_current_screened_movies
+from src.ugc import get_current_screened_movies, get_movie_latest_screening
 from src.db import UGCDB
 from src.discord_bot import DiscordBot
 
@@ -26,27 +26,35 @@ if __name__ == "__main__":
         print(f"Getting movies for {theater_name}")
         theater_data[theater_id] = get_current_screened_movies(theater_id)
 
-    # Save the current screenings and reset the screenings table
-    previous_screenings = ugc_db.get_all_screenings()
-    ugc_db.reset_screenings()
-
-    # Insert the new screenings into the database
+    # For each movie, get the latest screening
+    movies_latest_screening = {}
+    print("Getting latest screenings")
     for cinema_id, cinema_movies in theater_data.items():
         for movie in cinema_movies:
-            ugc_db.insert_movie(
-                cinema_id, movie["movie_id"], movie["title"], movie["img_url"]
-            )
-
-    # Post the new screenings in the Discord channel
-    for movie_name, movie_data in ugc_db.get_all_screenings().items():
-        if movie_name in previous_screenings:
-            if movie_data == previous_screenings[movie_name]:
+            movie_id = movie["movie_id"]
+            if movie_id  in movies_latest_screening:
                 continue
+            
+            movies_latest_screening[movie_id] = get_movie_latest_screening(movie_id)
 
-        theaters = movie_data["theaters"]
+    # ugc_db.debug()
+
+    new_movies_ids = []
+    print("Inserting new movies")
+    for cinema_id, cinema_movies in theater_data.items():
+        new_movies_ids += ugc_db.insert_movies(cinema_id, cinema_movies, movies_latest_screening)
+        
+    if ugc_db.is_first_run:
+        print("First run, skipping Discord post")
+        exit(0)
+        
+    # Post the new screenings in the Discord channel
+    for movie_id in new_movies_ids:
+        movie_data = ugc_db.get_movie_data(movie_id)
+
         discord_bot.post_message(
-            title=movie_name,
-            description="\n".join([f" * {theater}" for theater in theaters]),
-            img_url=movie_data["img_url"],
-            movie_id=movie_data["id"],
+            movie_id = movie_data["id"],
+            title = movie_data["name"],
+            description = movie_data["theaters"],
+            img_url = movie_data["img_url"],
         )
