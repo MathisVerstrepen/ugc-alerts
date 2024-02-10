@@ -5,6 +5,11 @@ from bs4 import BeautifulSoup
 
 from src.exceptions import RequestFailedException
 
+PROXY = {
+    "http": "socks5://192.168.2.51:1080",
+    "https": "socks5://192.168.2.51:1080",
+}
+
 
 def get_current_screened_movies(cinema_id: int) -> list:
     """Get all current movies screened in a cinema from UGC website
@@ -17,7 +22,7 @@ def get_current_screened_movies(cinema_id: int) -> list:
     """
     url = f"https://www.ugc.fr/filmsAjaxAction!getFilmsAndFilters.action?filter=stillOnDisplay&cinemaId={cinema_id}&reset=false"
 
-    req = requests.get(url, timeout=10)
+    req = requests.get(url, timeout=10, proxies=PROXY)
 
     if req.status_code != 200:
         raise RequestFailedException(f"Request failed with status code {req.status_code}")
@@ -55,7 +60,7 @@ def get_movie_latest_screening(move_id: int) -> dict:
         "regionId": 5,
     }
 
-    req = requests.post(url, params=query, timeout=10)
+    req = requests.post(url, params=query, timeout=10, proxies=PROXY)
 
     if req.status_code != 200:
         raise RequestFailedException(f"Request failed with status code {req.status_code}")
