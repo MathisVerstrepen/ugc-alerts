@@ -32,22 +32,26 @@ if __name__ == "__main__":
     for cinema_id, cinema_movies in theater_data.items():
         for movie in cinema_movies:
             movie_id = movie["movie_id"]
-            if movie_id  in movies_latest_screening:
+            movie_html_link = movie["movie_html_link"]
+            if movie_id in movies_latest_screening:
                 continue
-            
-            movies_latest_screening[movie_id] = get_movie_latest_screening(movie_id)
 
+            movies_latest_screening[movie_id] = get_movie_latest_screening(
+                movie_id, movie_html_link
+            )
     # ugc_db.debug()
 
     new_movies_ids = []
     print("Inserting new movies")
     for cinema_id, cinema_movies in theater_data.items():
-        new_movies_ids += ugc_db.insert_movies(cinema_id, cinema_movies, movies_latest_screening)
-        
-    if ugc_db.is_first_run:
-        print("First run, skipping Discord post")
-        exit(0)
-        
+        new_movies_ids += ugc_db.insert_movies(
+            cinema_id, cinema_movies, movies_latest_screening
+        )
+
+    # if ugc_db.is_first_run:
+    #     print("First run, skipping Discord post")
+    #     exit(0)
+
     # Post the new screenings in the Discord channel
     for movie_id in new_movies_ids:
         movie_data = ugc_db.get_movie_data(movie_id)

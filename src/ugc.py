@@ -29,7 +29,9 @@ def get_current_screened_movies(cinema_id: int) -> list:
     req = requests.get(url, timeout=10, proxies=PROXY, headers=headers)
 
     if req.status_code != 200:
-        raise RequestFailedException(f"Request failed with status code {req.status_code}")
+        raise RequestFailedException(
+            f"Request failed with status code {req.status_code}"
+        )
 
     req_html = req.text
 
@@ -38,16 +40,26 @@ def get_current_screened_movies(cinema_id: int) -> list:
 
     data = []
     for movie_box in movies_box:
-        movie_id = movie_box.find("a", class_="cta--pink").get("href").split("=")[-1]
+        movie_html_link = (
+            movie_box.find("a", class_="cta--pink").get("href").split("=")[-1]
+        )
+        movie_id = movie_html_link.split(".")[0].split("_")[-1]
         title = movie_box.find("a", class_="color--dark-blue").text
         img_url = movie_box.find("img").get("data-src")
 
-        data.append({"movie_id": movie_id, "title": title, "img_url": img_url})
+        data.append(
+            {
+                "movie_html_link": movie_html_link,
+                "title": title,
+                "img_url": img_url,
+                "movie_id": movie_id,
+            }
+        )
 
     return data
 
 
-def get_movie_latest_screening(move_id: int) -> dict:
+def get_movie_latest_screening(move_id: int, movie_html_link: str) -> dict:
     """Get the latest screening of a movie from UGC website
 
     Args:
@@ -56,18 +68,26 @@ def get_movie_latest_screening(move_id: int) -> dict:
     Returns:
         dict: The latest screening of the movie
     """
-
     url = "https://www.ugc.fr/showingsFilmAjaxAction!getDaysByFilm.action"
-    query = {
+
+    querystring = {
+        "reloadShowingsTopic": "reloadShowingsMob",
+        "dayForm": "dayFormMobile",
         "filmId": move_id,
-        "day": datetime.date.today().strftime("%Y-%m-%d"),
-        "regionId": 5,
+        "day": "",
     }
 
-    req = requests.post(url, params=query, timeout=10, proxies=PROXY, headers=headers)
+    c_headers = {
+        **headers,
+        "Referer": f"https://www.ugc.fr/{movie_html_link}?mtm_kwd=POLE_POSITION_RUBRIQUE_CINEMAS",
+    }
+
+    req = requests.post(url, params=querystring, timeout=10, proxies=PROXY, headers=c_headers)
 
     if req.status_code != 200:
-        raise RequestFailedException(f"Request failed with status code {req.status_code}")
+        raise RequestFailedException(
+            f"Request failed with status code {req.status_code}"
+        )
 
     soup = BeautifulSoup(req.text, "html.parser")
     dates = soup.find_all("div", class_="slider-item")
@@ -76,11 +96,11 @@ def get_movie_latest_screening(move_id: int) -> dict:
     for date in dates:
         datestr = date["id"].split("_")[-1]
         screenings_dates.append(datetime.datetime.strptime(datestr, "%Y-%m-%d").date())
-        
+
     if not screenings_dates:
         return None
 
     # Sort and get the latest screening
     screenings_dates.sort()
-    
+
     return screenings_dates[-1]
