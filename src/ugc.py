@@ -10,6 +10,10 @@ PROXY = {
     "https": "socks5://192.168.2.51:1080",
 }
 
+headers = {
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0",
+}
+
 
 def get_current_screened_movies(cinema_id: int) -> list:
     """Get all current movies screened in a cinema from UGC website
@@ -22,7 +26,7 @@ def get_current_screened_movies(cinema_id: int) -> list:
     """
     url = f"https://www.ugc.fr/filmsAjaxAction!getFilmsAndFilters.action?filter=stillOnDisplay&cinemaId={cinema_id}&reset=false"
 
-    req = requests.get(url, timeout=10, proxies=PROXY)
+    req = requests.get(url, timeout=10, proxies=PROXY, headers=headers)
 
     if req.status_code != 200:
         raise RequestFailedException(f"Request failed with status code {req.status_code}")
@@ -60,7 +64,7 @@ def get_movie_latest_screening(move_id: int) -> dict:
         "regionId": 5,
     }
 
-    req = requests.post(url, params=query, timeout=10, proxies=PROXY)
+    req = requests.post(url, params=query, timeout=10, proxies=PROXY, headers=headers)
 
     if req.status_code != 200:
         raise RequestFailedException(f"Request failed with status code {req.status_code}")
