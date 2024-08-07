@@ -16,7 +16,8 @@
             "buildArgs": [],
             "composeFile": "docker-compose.yml",
             "envFile": "ugc-alerts.env",
-            "envDeployType": "file"
+            "envDeployType": "file",
+            "host": "hogwarts-3"
         },
 
         "deploy": {
