@@ -1,9 +1,51 @@
 # pylint: disable=missing-module-docstring, wrong-import-position
 import datetime
+import itertools
+import pathlib
+import urllib.parse
+
 import requests
 from bs4 import BeautifulSoup
 
 from src.exceptions import RequestFailedException
+
+PROXY_FILE = pathlib.Path(__file__).resolve().parent.parent / "proxies.txt"
+
+
+def _load_proxies() -> list:
+    proxies = []
+
+    try:
+        proxy_lines = PROXY_FILE.read_text(encoding="utf-8").splitlines()
+    except FileNotFoundError as exc:
+        raise RuntimeError(f"Proxy file not found: {PROXY_FILE}") from exc
+
+    for line_number, proxy_line in enumerate(proxy_lines, start=1):
+        if not proxy_line.strip():
+            continue
+
+        proxy_parts = proxy_line.strip().split(":", maxsplit=3)
+        if len(proxy_parts) != 4 or not all(proxy_parts):
+            raise ValueError(
+                f"Invalid proxy on line {line_number}; expected host:port:user:password"
+            )
+
+        host, port, username, password = proxy_parts
+        proxy_url = "socks5://{}:{}@{}:{}".format(
+            urllib.parse.quote(username, safe=""),
+            urllib.parse.quote(password, safe=""),
+            host,
+            port,
+        )
+        proxies.append({"http": proxy_url, "https": proxy_url})
+
+    if not proxies:
+        raise ValueError(f"No proxies found in {PROXY_FILE}")
+
+    return proxies
+
+
+PROXIES = itertools.cycle(_load_proxies())
 
 headers = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0",
@@ -21,7 +63,7 @@ def get_current_screened_movies(cinema_id: int) -> list:
     """
     url = f"https://www.ugc.fr/filmsAjaxAction!getFilmsAndFilters.action?filter=stillOnDisplay&cinemaId={cinema_id}&reset=false"
 
-    req = requests.get(url, timeout=10, headers=headers)
+    req = requests.get(url, timeout=10, proxies=next(PROXIES), headers=headers)
 
     if req.status_code != 200:
         raise RequestFailedException(
@@ -77,7 +119,13 @@ def get_movie_latest_screening(move_id: int, movie_html_link: str) -> dict:
         "Referer": f"https://www.ugc.fr/{movie_html_link}?mtm_kwd=POLE_POSITION_RUBRIQUE_CINEMAS",
     }
 
-    req = requests.post(url, params=querystring, timeout=10, headers=c_headers)
+    req = requests.post(
+        url,
+        params=querystring,
+        timeout=10,
+        proxies=next(PROXIES),
+        headers=c_headers,
+    )
 
     if req.status_code != 200:
         raise RequestFailedException(
