@@ -2,6 +2,7 @@
 import datetime
 import itertools
 import pathlib
+import re
 import urllib.parse
 
 import requests
@@ -10,6 +11,20 @@ from bs4 import BeautifulSoup
 from src.exceptions import RequestFailedException
 
 PROXY_FILE = pathlib.Path(__file__).resolve().parent.parent / "proxies.txt"
+UGC_BASE_URL = "https://www.ugc.fr/"
+
+
+def _extract_movie_id(movie_url: str) -> int:
+    parsed_url = urllib.parse.urlparse(movie_url)
+    query_id = urllib.parse.parse_qs(parsed_url.query).get("id")
+    if query_id and query_id[0].isdigit():
+        return int(query_id[0])
+
+    path_id = re.search(r"_(\d+)\.html$", parsed_url.path)
+    if path_id:
+        return int(path_id.group(1))
+
+    raise ValueError(f"Unable to extract movie id from URL: {movie_url}")
 
 
 def _load_proxies() -> list:
@@ -77,10 +92,10 @@ def get_current_screened_movies(cinema_id: int) -> list:
 
     data = []
     for movie_box in movies_box:
-        movie_html_link = (
-            movie_box.find("a", class_="cta--pink").get("href").split("=")[-1]
+        movie_html_link = urllib.parse.urljoin(
+            UGC_BASE_URL, movie_box.find("a", class_="cta--pink").get("href")
         )
-        movie_id = movie_html_link.split(".")[0].split("_")[-1]
+        movie_id = _extract_movie_id(movie_html_link)
         title = movie_box.find("a", class_="color--dark-blue").text
         img_url = movie_box.find("img").get("data-src")
 
@@ -114,9 +129,11 @@ def get_movie_latest_screening(move_id: int, movie_html_link: str) -> dict:
         "day": "",
     }
 
+    movie_url = urllib.parse.urljoin(UGC_BASE_URL, movie_html_link)
+    query_separator = "&" if urllib.parse.urlparse(movie_url).query else "?"
     c_headers = {
         **headers,
-        "Referer": f"https://www.ugc.fr/{movie_html_link}?mtm_kwd=POLE_POSITION_RUBRIQUE_CINEMAS",
+        "Referer": f"{movie_url}{query_separator}mtm_kwd=POLE_POSITION_RUBRIQUE_CINEMAS",
     }
 
     req = requests.post(
